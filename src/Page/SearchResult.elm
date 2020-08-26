@@ -1,17 +1,18 @@
-module Page.SearchResult exposing (view)
+module Page.SearchResult exposing (init, view, update, Model, Msg)
 
 import Html exposing(..)
-import Html.Attributes exposing (class, href, src, style)
-import Html.Events exposing (..)
+import Html.Attributes exposing (class, href, value)
+import Html.Events exposing (onInput, onClick)
 import Http
 import Browser.Navigation as Nav
-import SearchResult exposing (Query, SearchResult, searchResultsDecoder)
+import SearchResult exposing (SearchQuery, SearchResult, searchResultsDecoder)
 
 -- MODEL
 
 type alias Model =
     { navKey : Nav.Key
     , status : Status
+    , query : String
     }
 
 type Status
@@ -20,14 +21,15 @@ type Status
     | Success (List SearchResult)
 
 
-init : Query -> Nav.Key -> ( Model, Cmd Msg )
+init : SearchQuery -> Nav.Key -> ( Model, Cmd Msg )
 init query navKey=
-    ( initialModel navKey, fetchResults query)
+    ( initialModel navKey (String.replace "%20" " " (Maybe.withDefault "" query) ), fetchResults query)
 
-initialModel : Nav.Key -> Model
-initialModel navKey =
+initialModel : Nav.Key -> String -> Model
+initialModel navKey query =
     { navKey = navKey
     , status = Loading
+    , query = query
     }
 
 
@@ -37,6 +39,8 @@ initialModel navKey =
 
 type Msg
     = FetchResults (Result Http.Error (List SearchResult))
+    | UpdateQuery String
+    | SubmitQuery
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -49,7 +53,11 @@ update msg model =
 
                 Err _ ->
                     ( { model | status = Failure }, Cmd.none )
+        UpdateQuery query ->
+            ( { model | query = query }, Cmd.none )
 
+        SubmitQuery ->
+            ( model, Nav.load ("/results/?q=" ++ model.query) )
 
 
 -- SUBSCRIPTIONS
@@ -62,37 +70,38 @@ subscriptions model =
 
 -- VIEW
 
-navbar : Html msg
+navbar : Html Msg
 navbar = 
     nav [class "container"]
         [div [class "navbar-brand"]
-            [div [class "navbar-item"]
+            [a [class "navbar-item", href "/"]
                 [h1 [class "title has-text-light"] [text "Bible"]]
             ]
         ]
 
-searchInput : Html msg
-searchInput = 
+searchInput : Model -> Html Msg
+searchInput model = 
     div [class "field has-addons has-addons-centered"] [
         div [class "control"] [
-            input [class "input"] []
+            input [class "input", value model.query, onInput UpdateQuery] []
         ]
         , div [class "control"] [
-            a [class "button is-info"] [text "Search"]
+            a [class "button is-info", onClick SubmitQuery] [text "Search"]
         ]
     ]
 
-view : Model -> Html msg
+view : Model -> Html Msg
 view model =
-    section [class "hero has-background-info-dark is-small"] [
-        div [class "hero-head"] [navbar]
-        , div [class "hero-body has-text-centered"] [searchInput]
+    div [] [
+        section [class "hero has-background-info-dark is-small"] [
+            div [class "hero-head"] [navbar]
+            , div [class "hero-body has-text-centered"] [searchInput model]
+        ]
         , viewResults model
     ]
-    
 
 
-viewResults : Model -> Html msg
+viewResults : Model -> Html Msg
 viewResults model =
     case model.status of
         Failure ->
@@ -105,7 +114,9 @@ viewResults model =
 
         Success results ->
            section [class "section"] [
-                div [class "container"] (List.map viewResult results)
+                div [class "container"] [
+                    div [class "content"] (List.map viewResult results)
+                ] 
             ]
 
 viewResult : SearchResult -> Html msg
@@ -115,9 +126,13 @@ viewResult result =
 -- HTTP
 
 
-fetchResults : Query -> Cmd Msg
+fetchResults : SearchQuery -> Cmd Msg
 fetchResults query =
-    Http.get
-        { url = "https://lectionary-4josd7vm2q-ue.a.run.app/verse/?q=" ++ query
-        , expect = Http.expectJson FetchResults searchResultsDecoder
-        }
+    case query of
+        Just q ->
+            Http.get
+                { url = "https://lectionary-4josd7vm2q-ue.a.run.app/verse/?q=" ++ q
+                , expect = Http.expectJson FetchResults searchResultsDecoder
+                }
+        Nothing ->
+            Cmd.none

@@ -2,14 +2,13 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
-import Html exposing (Html, text, div, h1, img, h3)
-import Html.Attributes exposing (src)
+import Html exposing (Html, h3, text)
 import Page.Home as Home
 import Page.SearchResult as SearchResult
 import Route exposing (Route)
 import Url exposing (Url)
-import Route
-import Route
+
+
 
 ---- MODEL ----
 
@@ -19,18 +18,23 @@ type alias Model =
     , page : Page
     , navKey : Nav.Key
     }
+
+
 type Page
     = NotFoundPage
-    | HomePage
-    | SearchResultPage
+    | HomePage Home.Model
+    | SearchResultPage SearchResult.Model
 
 
 type Msg
-    = LinkClicked UrlRequest
+    = HomePageMsg Home.Msg
+    | SearchResultPageMsg SearchResult.Msg
+    | LinkClicked UrlRequest
     | UrlChanged Url
 
+
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url navKey =
+init _ url navKey =
     let
         model =
             { route = Route.parseUrl url
@@ -50,10 +54,18 @@ initCurrentPage ( model, existingCmds ) =
                     ( NotFoundPage, Cmd.none )
 
                 Route.Home ->
-                    ( HomePage, Cmd.none )
+                    let
+                        ( pageModel, pageCmds ) =
+                            Home.init model.navKey
+                    in
+                    ( HomePage pageModel, Cmd.map HomePageMsg pageCmds )
 
-                Route.SearchResult _ ->
-                    ( SearchResultPage, Cmd.none )
+                Route.SearchResult query ->
+                    let
+                        ( pageModel, pageCmds ) =
+                            SearchResult.init query model.navKey
+                    in
+                    ( SearchResultPage pageModel, Cmd.map SearchResultPageMsg pageCmds )
     in
     ( { model | page = currentPage }
     , Cmd.batch [ existingCmds, mappedPageCmds ]
@@ -62,10 +74,53 @@ initCurrentPage ( model, existingCmds ) =
 
 
 ---- UPDATE ----
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
-            
+    case ( msg, model.page ) of
+        ( HomePageMsg subMsg, HomePage pageModel ) ->
+            let
+                ( updatedPageModel, updatedCmd ) =
+                    Home.update subMsg pageModel
+            in
+            ( { model | page = HomePage updatedPageModel }
+            , Cmd.map HomePageMsg updatedCmd
+            )
+
+        ( SearchResultPageMsg subMsg, SearchResultPage pageModel ) ->
+            let
+                ( updatedPageModel, updatedCmd ) =
+                    SearchResult.update subMsg pageModel
+            in
+            ( { model | page = SearchResultPage updatedPageModel }
+            , Cmd.map SearchResultPageMsg updatedCmd
+            )
+
+        ( LinkClicked urlRequest, _ ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model
+                    , Nav.pushUrl model.navKey (Url.toString url)
+                    )
+
+                Browser.External url ->
+                    ( model
+                    , Nav.load url
+                    )
+
+        ( UrlChanged url, _ ) ->
+            let
+                newRoute =
+                    Route.parseUrl url
+            in
+            ( { model | route = newRoute }, Cmd.none )
+                |> initCurrentPage
+
+        ( _, _ ) ->
+            ( model, Cmd.none )
+
+
 
 ---- VIEW ----
 
@@ -76,22 +131,31 @@ view model =
     , body = [ currentView model ]
     }
 
+
 currentView : Model -> Html Msg
 currentView model =
     case model.page of
         NotFoundPage ->
             notFoundView
-        SearchResultPage ->
-             SearchResult.view
-        HomePage ->
-             Home.view
+
+        SearchResultPage pageModel ->
+            SearchResult.view pageModel
+                |> Html.map SearchResultPageMsg
+
+        HomePage pageModel ->
+            Home.view pageModel
+                |> Html.map HomePageMsg
+
 
 notFoundView : Html msg
 notFoundView =
     h3 [] [ text "Oops! The page you requested was not found!" ]
 
 
+
 ---- PROGRAM ----
+
+
 main : Program () Model Msg
 main =
     Browser.application

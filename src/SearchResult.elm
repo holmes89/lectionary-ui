@@ -1,10 +1,10 @@
-module SearchResult exposing(Query, SearchResult, searchResultDecoder, searchResultsDecoder)
+module SearchResult exposing(SearchQuery, SearchResult, searchResultDecoder, searchResultsDecoder)
 
-import Json.Decode as Decode exposing (Decoder, field, string)
-import Json.Decode.Pipeline exposing (optional, required)
+import Json.Decode as Decode exposing (Decoder,  string)
+import Json.Decode.Pipeline exposing (required)
 
-type alias Query = 
-    String
+type alias SearchQuery = 
+    Maybe String
 
 type alias SearchResult =
     { displayName : String

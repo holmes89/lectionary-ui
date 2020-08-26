@@ -1,13 +1,14 @@
 module Route exposing (Route(..), parseUrl)
 
 import Url exposing (Url)
-import Url.Parser exposing (..)
-import SearchResult exposing (Query)
+import Url.Parser exposing (Parser, parse, oneOf, map, top, s, (<?>), string)
+import SearchResult exposing (SearchQuery)
+import Url.Parser.Query as Query
 
 type Route
     = NotFound
     | Home
-    | SearchResult Query
+    | SearchResult SearchQuery
 
 
 parseUrl : Url -> Route
@@ -23,5 +24,5 @@ matchRoute : Parser (Route -> a) a
 matchRoute =
     oneOf
         [ map Home top
-          , map SearchResult (s "results" </> string)
+          , map SearchResult (s "results" <?> Query.string "q")
         ]
