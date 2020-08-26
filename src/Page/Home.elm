@@ -25,9 +25,12 @@ searchInput =
 
 view : Html msg
 view =
-    section [class "hero has-background-info-dark is-small"]
-        [div [class "hero-head"]
-            [navbar]
-        , div [class "hero-body has-text-centered"] [searchInput]
+    section [class "hero has-background-info-dark is-fullheight"] [
+        div [class "hero-body"] [
+            div [class "container"] [
+                h1 [class "title has-text-light"] [text "Bible"]
+                ,  searchInput
+            ]
         ]
+    ]
         
