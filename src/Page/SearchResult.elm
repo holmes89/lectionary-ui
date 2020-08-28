@@ -5,7 +5,7 @@ import Html.Attributes exposing (class, href, value)
 import Html.Events exposing (onInput, onClick)
 import Http
 import Browser.Navigation as Nav
-import SearchResult exposing (SearchQuery, SearchResult, searchResultsDecoder)
+import SearchResult exposing (SearchQuery, SearchResult, Version, searchResultsDecoder)
 
 -- MODEL
 
@@ -32,7 +32,9 @@ initialModel navKey query =
     , query = query
     }
 
-
+queryString : SearchQuery -> Version -> String
+queryString query version = 
+    ""
 
 -- UPDATE
 
@@ -79,10 +81,19 @@ navbar =
             ]
         ]
 
+versionList = ["amp","asv","cev","darby","esv","kjv","msg","nasb","niv","nkjv","nlt","nrsv","ylt"]
+
 searchInput : Model -> Html Msg
 searchInput model = 
     div [class "field has-addons has-addons-centered"] [
-        div [class "control"] [
+        div [ class "control" ] [
+            span [class "select"] [
+                select []   (List.map
+                    (\l -> option [value l] [text <| String.toUpper l])
+                    versionList)
+            ]
+        ]
+        , div [class "control"] [
             input [class "input", value model.query, onInput UpdateQuery] []
         ]
         , div [class "control"] [

@@ -1,9 +1,12 @@
-module SearchResult exposing(SearchQuery, SearchResult, searchResultDecoder, searchResultsDecoder)
+module SearchResult exposing(SearchQuery, SearchResult, Version, searchResultDecoder, searchResultsDecoder)
 
 import Json.Decode as Decode exposing (Decoder,  string)
 import Json.Decode.Pipeline exposing (required)
 
 type alias SearchQuery = 
+    Maybe String
+
+type alias Version =
     Maybe String
 
 type alias SearchResult =
